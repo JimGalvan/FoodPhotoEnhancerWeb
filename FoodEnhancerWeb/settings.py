@@ -124,5 +124,5 @@ STATIC_URL = "static/"
 import os
 PHOTO_ENHANCER_API_URL = os.environ.get(
     'PHOTO_ENHANCER_API_URL',
-    'http://localhost:8000/upload/'  # Default for local development
+    'https://foodphotoenhancer-production.up.railway.app/upload/'  # Default for local development
 )
