@@ -37,14 +37,9 @@
 
             <form
                 id="photo-form"
-                hx-post="{% url 'upload_photo' %}"
-                hx-target="#result"
-                hx-encoding="multipart/form-data"
-                hx-indicator="#loading"
+                onsubmit="uploadPhoto(event)"
                 class="space-y-4"
             >
-                {% csrf_token %}
-
                 <input
                     id="photoInput"
                     type="file"
@@ -323,28 +318,59 @@
         }
     }
 
-    // HTMX Event Handlers
-    document.body.addEventListener("htmx:beforeRequest", () => {
-        document.getElementById("loading").classList.remove("hidden");
-        document.getElementById("photoInput").disabled = true;
-        document.getElementById("submitButton").disabled = true;
-    });
+    // Upload Photo Function
+    async function uploadPhoto(event) {
+        event.preventDefault();
 
-    document.body.addEventListener("htmx:afterRequest", (event) => {
-        document.getElementById("loading").classList.add("hidden");
-        document.getElementById("photoInput").disabled = false;
-        document.getElementById("submitButton").disabled = false;
+        const fileInput = document.getElementById('photoInput');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const submitButton = document.getElementById('submitButton');
 
-        if (event.detail.successful) {
+        if (!fileInput.files || !fileInput.files[0]) {
+            alert('Please select a photo to upload');
+            return;
+        }
+
+        // Show loading
+        loading.classList.remove('hidden');
+        fileInput.disabled = true;
+        submitButton.disabled = true;
+        result.innerHTML = '';
+
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('photo', fileInput.files[0]);
+
+        try {
+            // Call local upload endpoint (which proxies to the API)
+            const response = await fetch('{% url "upload_photo" %}', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to process photo');
+            }
+
+            // Show result
+            result.innerHTML = `<img src="${data.image}" class="w-full rounded-lg border border-gray-700" alt="Processed photo">`;
+
             // Get the before and after images
             const beforeImg = document.getElementById("photoPreview").src;
-            const afterImg = document.getElementById("result").querySelector('img');
+            const afterImg = data.image;
+            saveToHistory(beforeImg, afterImg);
 
-            if (afterImg) {
-                saveToHistory(beforeImg, afterImg.src);
-            }
+        } catch (err) {
+            result.innerHTML = `<p class="text-red-400">Error: ${err.message}</p>`;
+        } finally {
+            loading.classList.add('hidden');
+            fileInput.disabled = false;
+            submitButton.disabled = false;
         }
-    });
+    }
 
     // Initialize on page load
     checkPrivacyNotice();

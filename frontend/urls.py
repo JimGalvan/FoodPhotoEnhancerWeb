@@ -1,6 +1,6 @@
 from django.urls import path
 
-from frontend.views import index
+from frontend.views import index, upload_photo
 
 urlpatterns = [
     path('', index, name='index'),

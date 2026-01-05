@@ -25,10 +25,9 @@ SECRET_KEY = "django-insecure-75(ugi#c3)$(z2)1n@-66w8sl@gj3mmht^z=h2fuylcd!6h8ho
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
-
-# Application definition
+CORS_ALLOW_ALL_ORIGINS = True
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -37,10 +36,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "frontend.apps.FrontendConfig"
+    # "frontend.apps.FrontendConfig"
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # Add at the top
+    'django.middleware.common.CommonMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -117,3 +119,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+
+# API Configuration
+import os
+PHOTO_ENHANCER_API_URL = os.environ.get(
+    'PHOTO_ENHANCER_API_URL',
+    'http://localhost:8000/upload/'  # Default for local development
+)

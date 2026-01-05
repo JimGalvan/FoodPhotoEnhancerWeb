@@ -16,11 +16,9 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
-
-import frontend
+from django.urls import path, include
 
 urlpatterns = [
-    path('/', ''),
+    path('', include('frontend.urls')),
     path("admin/", admin.site.urls),
 ]
