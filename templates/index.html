@@ -56,6 +56,15 @@
                     type="submit"
                     class="w-full py-2 bg-emerald-600 text-white rounded font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
+                    Upload & Detect Dish
+                </button>
+
+                <button
+                    id="enhanceButton"
+                    type="button"
+                    onclick="enhancePhoto()"
+                    class="hidden w-full py-2 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                     Enhance Photo
                 </button>
 
@@ -70,6 +79,10 @@
 
             <div id="loading" class="hidden mt-4 text-center text-gray-300">
                 Processing photo…
+            </div>
+
+            <div id="statusMessage" class="hidden mt-4 p-4 bg-emerald-900 bg-opacity-50 border border-emerald-700 rounded-lg text-center text-gray-200">
+                <!-- Status messages will appear here -->
             </div>
         </div>
 
@@ -149,6 +162,9 @@
 </div>
 
 <script>
+    // Session storage for two-step process
+    let sessionId = null;
+
     // Tab Navigation
     function showTab(tab) {
         const uploadSection = document.getElementById('uploadSection');
@@ -225,6 +241,10 @@
         document.getElementById('photo-form').reset();
         document.getElementById('previewContainer').classList.add('hidden');
         document.getElementById('result').innerHTML = '';
+        document.getElementById('statusMessage').classList.add('hidden');
+        document.getElementById('enhanceButton').classList.add('hidden');
+        document.getElementById('submitButton').classList.remove('hidden');
+        sessionId = null;
     }
 
     // Load History
@@ -318,7 +338,7 @@
         }
     }
 
-    // Upload Photo Function
+    // Step 1: Upload Photo & Detect Subject
     async function uploadPhoto(event) {
         event.preventDefault();
 
@@ -326,6 +346,8 @@
         const loading = document.getElementById('loading');
         const result = document.getElementById('result');
         const submitButton = document.getElementById('submitButton');
+        const enhanceButton = document.getElementById('enhanceButton');
+        const statusMessage = document.getElementById('statusMessage');
 
         if (!fileInput.files || !fileInput.files[0]) {
             alert('Please select a photo to upload');
@@ -337,13 +359,14 @@
         fileInput.disabled = true;
         submitButton.disabled = true;
         result.innerHTML = '';
+        statusMessage.classList.add('hidden');
 
         // Prepare form data
         const formData = new FormData();
         formData.append('photo', fileInput.files[0]);
 
         try {
-            // Call local upload endpoint (which proxies to the API)
+            // Call upload endpoint to detect subject
             const response = await fetch('{% url "upload_photo" %}', {
                 method: 'POST',
                 body: formData
@@ -352,23 +375,108 @@
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to process photo');
+                throw new Error(data.error || 'Failed to detect dish');
             }
 
-            // Show result
-            result.innerHTML = `<img src="${data.image}" class="w-full rounded-lg border border-gray-700" alt="Processed photo">`;
+            if (data.success) {
+                // Store session ID for next step
+                sessionId = data.session_id;
 
-            // Get the before and after images
-            const beforeImg = document.getElementById("photoPreview").src;
-            const afterImg = data.image;
-            saveToHistory(beforeImg, afterImg);
+                // Show preview with green outline
+                result.innerHTML = `<img src="${data.image}" class="w-full rounded-lg border border-gray-700" alt="Dish detection preview">`;
+
+                // Show status message
+                statusMessage.textContent = data.message || 'Dish detected - review the green outline';
+                statusMessage.classList.remove('hidden');
+
+                // Hide upload button, show enhance button
+                submitButton.classList.add('hidden');
+                enhanceButton.classList.remove('hidden');
+                enhanceButton.disabled = false;
+            } else {
+                throw new Error(data.message || 'Failed to detect dish');
+            }
 
         } catch (err) {
             result.innerHTML = `<p class="text-red-400">Error: ${err.message}</p>`;
+            sessionId = null;
         } finally {
             loading.classList.add('hidden');
             fileInput.disabled = false;
             submitButton.disabled = false;
+        }
+    }
+
+    // Step 2: Enhance Photo
+    async function enhancePhoto() {
+        if (!sessionId) {
+            alert('No session found. Please upload a photo first.');
+            return;
+        }
+
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const enhanceButton = document.getElementById('enhanceButton');
+        const statusMessage = document.getElementById('statusMessage');
+
+        // Show loading
+        loading.classList.remove('hidden');
+        enhanceButton.disabled = true;
+
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('session_id', sessionId);
+
+        try {
+            // Call enhance endpoint
+            const response = await fetch('{% url "enhance_photo" %}', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                if (data.error && data.error.includes('Invalid or expired session')) {
+                    throw new Error('Session expired. Please re-upload your photo.');
+                }
+                throw new Error(data.error || 'Failed to enhance photo');
+            }
+
+            if (data.success) {
+                // Show final enhanced image
+                result.innerHTML = `<img src="${data.image}" class="w-full rounded-lg border border-gray-700" alt="Enhanced photo">`;
+
+                // Update status message
+                statusMessage.textContent = data.message || 'Photo enhanced successfully!';
+
+                // Get the before and after images
+                const beforeImg = document.getElementById("photoPreview").src;
+                const afterImg = data.image;
+                saveToHistory(beforeImg, afterImg);
+
+                // Clear session
+                sessionId = null;
+
+                // Hide enhance button
+                enhanceButton.classList.add('hidden');
+            } else {
+                throw new Error(data.message || 'Failed to enhance photo');
+            }
+
+        } catch (err) {
+            result.innerHTML = `<p class="text-red-400">Error: ${err.message}</p>`;
+
+            // If session expired, reset the form
+            if (err.message.includes('Session expired') || err.message.includes('Invalid or expired session')) {
+                sessionId = null;
+                enhanceButton.classList.add('hidden');
+                document.getElementById('submitButton').classList.remove('hidden');
+                statusMessage.classList.add('hidden');
+            }
+        } finally {
+            loading.classList.add('hidden');
+            enhanceButton.disabled = false;
         }
     }
 

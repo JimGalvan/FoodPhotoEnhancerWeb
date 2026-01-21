@@ -124,5 +124,7 @@ STATIC_URL = "static/"
 import os
 PHOTO_ENHANCER_API_URL = os.environ.get(
     'PHOTO_ENHANCER_API_URL',
-    'https://foodphotoenhancer-production.up.railway.app/upload/'  # Default for local development
+    'https://l04dzphuklc0fn-8888.proxy.runpod.net'  # Default for local development
+    # 'http://127.0.0.1:8000/'
 )
+
