@@ -126,5 +126,6 @@ PHOTO_ENHANCER_API_URL = os.environ.get(
     'PHOTO_ENHANCER_API_URL',
     'https://l04dzphuklc0fn-8888.proxy.runpod.net'  # Default for local development
     # 'http://127.0.0.1:8000/'
+    # fix
 )
 
